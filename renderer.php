@@ -36,20 +36,25 @@ require_once($CFG->dirroot.'/question/behaviour/adaptiveweighted/renderer.php');
  * @copyright  2009 The Open University
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweighted_renderer 
-{
+class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweighted_renderer {
+
     /**
      * Several behaviours need a submit button, so put the common code here.
      * The button is disabled if the question is displayed read-only.
      * @param question_display_options $options controls what should and should not be displayed.
      * @return string HTML fragment.
      */
-    protected function submit_button(question_attempt $qa, question_display_options $options, $button_name, $button_text, $class='', $disabled=false)
-    {
+    protected function submit_button(question_attempt $qa, question_display_options $options, $button_name='submit', $button_text=null, $class='', $disabled=false) {
+
+        //if no button text was provided, then use the default string
+        if($button_text === null) {
+            $button_text = get_string('gradenow', 'qbehaviour_adaptiveweighted');
+        }
+
+
         //compute the button's attributes
-        $attributes = 
-            array
-            (
+        $attributes = array
+        (
             'type' => 'submit',
             'id' => $qa->get_behaviour_field_name($button_name),
             'name' => $qa->get_behaviour_field_name($button_name),
@@ -59,11 +64,14 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
         );
 
         //if the question is read-only, prevent the button from being clicked
-        if ($options->readonly || $disabled)
+        if ($options->readonly || $disabled) {
             $attributes['disabled'] = 'disabled';
+        }
 
-        if ($disabled)
+        //and add the appropirate colorization
+        if ($disabled) {
             $attributes['class'] .= ' disabled';
+        }
 
         //generate a new submit button 
         $output = html_writer::empty_tag('input', $attributes);
@@ -71,15 +79,16 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
         //if this question isn't read-only, initialize the submit button routine, which prevents multiple submissions
         if (!$options->readonly) 
             $this->page->requires->js_init_call('M.core_question_engine.init_submit_button', array($attributes['id'], $qa->get_slot()));
-        
+
+        //finally, return the rendered submit button
         return $output;
     }
 
     /**
      * Render the question's controls.
      */
-    public function controls(question_attempt $qa, question_display_options $options) 
-    {
+    public function controls(question_attempt $qa, question_display_options $options) {
+
         //though these aren't strictly controls, this is the best place to render these I've found so far
         $output = $this->get_hints($qa);
 
@@ -87,10 +96,11 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
         $output .= $this->submit_button($qa, $options, 'submit', get_string('gradenow', 'qbehaviour_adaptiveweighted'), 'gradenow');
         $output .= $this->submit_button($qa, $options, 'save', get_string('savenow', 'qbehaviour_adaptiveweighted'), 'savenow');
 
-        //if the question has hints, display the "get hints" button
+        //get the number of available hints
         $hints_available = count($qa->get_question()->hints);
-        if($hints_available)
-        {
+
+        //if the question has hints, display the "get hints" button
+        if($hints_available) {
             //get the number of hints used
             $hints_used = $qa->get_last_behaviour_var('_hints', 0);
 
@@ -114,8 +124,14 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
         return $output;
     }
 
-    protected function get_hints(question_attempt $qa)
-    {
+    /**
+     * Get all of the _relevant_ hints for a given Question Attempt.
+     * 
+     * @param question_attempt $qa  The Question Attempt for which the hints are being requested.
+     * @return string               The hints, as a collection of HTML code to be added to the question. 
+     */
+    protected function get_hints(question_attempt $qa) {
+
         //get a reference to the question object;
         $question = $qa->get_question();
 
@@ -129,8 +145,8 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
         $output = '';
 
         //get as many hints as the user has requested (or less, if less are available; e.g. if the question is editied)
-        for($i = 0; $i < min($hint_count, $available_hints); ++$i)
-        {
+        for($i = 0; $i < min($hint_count, $available_hints); ++$i) {
+
             //get the hint object
             $hint = $question->get_hint($i, $qa);
 
@@ -151,11 +167,13 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
 	* @param object $mark contains information about the current mark.
 	* @param question_display_options $options display options.
 	*/
-	protected function penalty_info(question_attempt $qa, $mark, question_display_options $options) 
-	{
+    protected function penalty_info(question_attempt $qa, $mark, question_display_options $options) {
+
+
 		//if no penalties have been set, return an empty string
-		if (!$qa->get_question()->penalty)
-			return '';
+        if (!$qa->get_question()->penalty) {
+            return '';
+        }
 		
 		$output = '';
 		
@@ -173,12 +191,9 @@ class qbehaviour_adaptiveweightedhints_renderer extends qbehaviour_adaptiveweigh
 			$lastpenalty = $mark->max * $qa->get_last_behaviour_var('_lastpenalty', 0);
 			
 			//and return that, instead of penalty information
-			if($maxpossible > 0)
-			{
+			if($maxpossible > 0) {
 				$output .= ' ' . get_string('gradingdetailsmaxpossible', 'qbehaviour_adaptiveweighted', array('lastpenalty' => format_float($lastpenalty, $options->markdp), 'maxpossible' => format_float(max($maxpossible, 0), $options->markdp), 'max' => $mark->max));
-			}
-			else
-			{
+			} else {
 				$output .= ' ' . get_string('gradingdetailspenalty', 'qbehaviour_adaptiveweighted', array('lastpenalty' => format_float($lastpenalty, $options->markdp), 'max' => $mark->max));
 			}
 		}
